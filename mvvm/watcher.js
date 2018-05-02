@@ -17,7 +17,7 @@ class Watcher {
     }
 
     get () {
-        Dep.target = this;     // 将当前订阅者指向自己
+        Dep.target = this;     // 将当前订阅者指向 Watcher 实例， 当数据发生变化时 可以调用 Watcher 上的 update 更新视图
         let value = this.getVal(this.vm, this.expr);  // 触发 getter，添加自己到属性订阅器中
         Dep.target = null;    // 添加完毕，重置
         return value;
@@ -27,7 +27,7 @@ class Watcher {
     update () {
         let newValue = this.getVal(this.vm, this.expr);
         let oldValue = this.value;
-        if (newValue != oldValue) {
+        if (newValue != oldValue) { // 数据更新时 获取 this.expr 的 value 对比新旧如果不一样的时候   执行初始化时 存储对应指令的 回调函数
             this.cb(newValue); // 调用 watch 的 callback
         }
     }

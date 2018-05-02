@@ -8,30 +8,32 @@
 </head>
 <body>
     <div id='app'>
-        <div>
-            <p>aaaa</p>
-            <span>haha</span>
-        </div>
         <!-- 双向数据绑定 靠的是表单 -->
         <input type="text" v-modal='message'>
-        {{message}}
-
-        
-        
-    
+        <p>{{ message }}</p>
+        <p>{{ message }}</p>
+        <p>《{{album.name}}》是{{singer}}2005年11月发行的专辑</p>
+        <p>{{ song }}</p>
     </div>
-    <script src="./watcher.js"></script>
-    <script src="./observer.js"></script>
-    <script src="./compile.js"></script>
-    <script src="./mvvm.js"></script>
+    <script src="./mvvm/watcher.js"></script>
+    <script src="./mvvm/observer.js"></script>
+    <script src="./mvvm/compile.js"></script>
+    <script src="./mvvm/mvvm.js"></script>
     <script>
 
-        let vm = new MVVM({
-            el: '#app', // document.getElementById('app');
+        let mvvm = new MVVM({
+            el: '#app',
             data: {
-                message: 'hello world'
+                message: 'hello',
+                song: '发如雪',
+                album: {
+                    name: '十一月的萧邦',
+                    theme: '夜曲'
+                },
+                singer: '周杰伦'
             }
         });
+
     </script>
 </body>
 </html>

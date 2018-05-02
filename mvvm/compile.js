@@ -3,8 +3,8 @@ class Compile {
         this.el = this.isElementNode(el) ? el : document.querySelector(el);
         this.vm = vm;
 
-        if (this.el) {
-            // 如果可以获取到这个元素 做编译处理
+        if (this.el) { // 如果可以获取到这个元素 做编译处理
+            
             // 1. 先把真实的 dom 移到内存中 fragment
             let fragment = this.node2Fragment(this.el);
 
@@ -17,20 +17,11 @@ class Compile {
 
     }
 
-    /** 专门写一些辅助方法 */
-    isElementNode (node) {
-        return node.nodeType === 1;
-    }
-    // 判断是不是指令
-    isDirective (name) {
-        return name.includes('v-');
-    }
 
-
-    /** 核心的方法 */ 
-    node2Fragment (el) { // 需要将 el 中的内容全部放到内存中去
-        // 创建一个文档碎片
-        let fragment = document.createDocumentFragment(); 
+    /* 核心方法 */
+    // 需要将 el 中的内容全部放到内存中去
+    node2Fragment (el) {
+        let fragment = document.createDocumentFragment();
         let firstChild;
 
         while (firstChild = el.firstChild) {
@@ -42,50 +33,57 @@ class Compile {
     compile (fragment) {
         // 需要递归循环拿到每一层的子节点
         let childNodes = fragment.childNodes;
-        Array.from(childNodes).forEach(node => {
+        Array.from(childNodes).forEach( node => {
             if (this.isElementNode(node)) {
-                // 是元素节点, 还需要继续深入检查
-                // 编译元素
+                // 如果是元素节点, 编译元素节点
                 this.compileElement(node);
+                // 还需要继续深入检查
                 this.compile(node);
             } else {
-                // 文本节点 {{xx}}
-                // 编译文本
+                // 文本节点 {{xxx}}  编译文本
                 this.compileText(node);
-
             }
-        })
+        } );
     }
 
+    // 编译元素节点
     compileElement (node) {
         // 规定：指令以 v-xxx 命名
         // 如 <span v-text="content"></span> 中指令为 v-text
-        let attrs = node.attributes;
+        let attrs = node.attributes; // 获取指定节点的属性集合  如 {0: v-text, v-text: v-text, length: 1}
+
         Array.from(attrs).forEach( attr => {
             // 判断属性是不是包含 v-
-            let attrName = attr.name;
-            if (this.isDirective(attrName)) {
-                // 取到对应的值 放到节点中
-                
-                let expr = attr.value; // 取出 v-model 的值
+            let attrName = attr.name; // attr => v-text='song'
+            if (this.isDirective(attrName)) { // 判断包不包含 v- 指令
+                // 取出对应的值放入到节点中
+                let expr = attr.value;   //  message
                 let [, type] = attrName.split('-');
-                // node this.vm.$data expr
+                // CompileUtil['text'](node, this.vm, expr);
                 CompileUtil[type](node, this.vm, expr);
-                //  todo...
-
             }
+
         } )
     }
 
+    // 编译文本节点 {{xxx}}
     compileText (node) {
-        // 带 {{}}
         let expr = node.textContent; // 取出文本中的内容
+
         let reg = /\{\{([^}]+)\}\}/g;
         if (reg.test(expr)) {
-            // node this.vm.$data expr
             CompileUtil['text'](node, this.vm, expr);
-
         }
+    }
+
+
+    /** 专门写一些辅助方法 */
+    isElementNode (node) {
+        return node.nodeType === 1;
+    }
+    // 判断是不是指令
+    isDirective (name) {
+        return name.includes('v-');
     }
 
 }
@@ -103,25 +101,8 @@ CompileUtil = {
     // 获取编译文本后的结果
     getTextVal (vm, expr) {
         return expr.replace(/\{\{([^}]+)\}\}/g, (...arguments) => {
-            return this.getVal(vm, arguments[1]);
+            return this.getVal(vm, arguments[1].trim());
         });
-    },
-
-    // 文本处理
-    text (node, vm, expr) {
-        let updateFn = this.updater['textUpdater'];
-        // 'message.a' => [message, a]
-        let value = this.getTextVal(vm,expr);
-
-        expr.replace(/\{\{([^}]+)\}\}/g, (...arguments) => {
-            new Watcher(vm, arguments[1], (newValue) => {
-                // 如果数据变化了， 文本节点需要重新获取依赖的数据更新文本中的内容
-                updateFn && updateFn(node, this.getTextVal(vm, newValue));
-            })
-        });
-
-        
-        updateFn && updateFn(node, value);
     },
 
     setval (vm, expr, value) {
@@ -135,10 +116,27 @@ CompileUtil = {
         } , vm.$data);
     },
 
+    // 文本处理
+    text (node, vm, expr) {
+        let updateFn = this.updater['textUpdater'];
+        // 'message.a' => [message, a]
+        let value = this.getTextVal(vm,expr);
+
+        expr.replace(/\{\{([^}]+)\}\}/g, (...arguments) => {
+            new Watcher(vm, arguments[1].trim(), (newValue) => {
+                // 如果数据变化了， 文本节点需要重新获取依赖的数据更新文本中的内容 
+                updateFn && updateFn(node, this.getTextVal(vm, newValue));
+            })
+        });
+
+        
+        updateFn && updateFn(node, value);
+    },
+
     // 输入框处理
     modal (node, vm, expr) {
         let updateFn = this.updater['modelUpdater'];
-        // 'message.a' => [message, a]
+
         // 这里应该加一个监控， 数据变化了应该调用 watcher 的 callback
         new Watcher(vm, expr, (newValue) => {
             // 当值变化后回调用 cb 将新的值传递过来（默认不调用， 调用 update 时才会执行）
@@ -156,6 +154,7 @@ CompileUtil = {
         textUpdater (node, value) {
             node.textContent = value;
         },
+
         // 输入框更新
         modelUpdater (node, value) {
             node.value = value;
